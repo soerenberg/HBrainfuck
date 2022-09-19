@@ -25,6 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      HBrainfuck.Internal.AST
+      HBrainfuck.Internal.Interpreter
+      HBrainfuck.Internal.Parser
       Lib
   other-modules:
       Paths_HBrainfuck
@@ -33,6 +36,8 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
+    , mtl
+    , parsec
   default-language: Haskell2010
 
 executable HBrainfuck-exe
@@ -45,6 +50,8 @@ executable HBrainfuck-exe
   build-depends:
       HBrainfuck
     , base >=4.7 && <5
+    , mtl
+    , parsec
   default-language: Haskell2010
 
 test-suite HBrainfuck-test
@@ -58,4 +65,8 @@ test-suite HBrainfuck-test
   build-depends:
       HBrainfuck
     , base >=4.7 && <5
+    , mtl
+    , parsec
+    , tasty
+    , tasty-hunit
   default-language: Haskell2010
