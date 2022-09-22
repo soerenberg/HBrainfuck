@@ -1,8 +1,10 @@
-import HBrainfuck.Internal.AST (BFValue (..))
-import HBrainfuck.Internal.Parser (parseBFProgram, parseBFValue, parseBrackets)
+import Data.Char (chr, ord)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.HUnit (testCase, (@?=))
 import Text.ParserCombinators.Parsec (parse)
+import HBrainfuck.Internal.AST (BFValue (..))
+import HBrainfuck.Internal.Interpreter (runBF)
+import HBrainfuck.Internal.Parser (parseBFProgram, parseBFValue, parseBrackets)
 
 main :: IO ()
 main = defaultMain tests
@@ -13,6 +15,7 @@ tests = testGroup "Tests"
   , parseBFValueTests
   , parseBracketsTests
   , parseEndToEndTests
+  , fullEndToEndTests
   ]
 
 showBFValueTests :: TestTree
@@ -74,4 +77,23 @@ parseEndToEndTests = testGroup "ParseEndToEndTest"
   , testCase "parse '> >> - [ .,  ]'" $
       parse parseBFProgram "Brainfuck" "> >> - [ .,  ]  " @?=
       Right [Gt, Gt, Gt, Minus, Brackets [Dot, Comma]]
+  ]
+
+-- Brainfuck code to print 'Hello World!\n', source: Wikipedia
+hello_world_src :: String
+hello_world_src = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---."
+                  ++ "+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+
+-- Shift small ASCII values by 48 values to produce printable characters
+shift48 :: String -> String
+shift48 = map $ chr . (+ 48) . ord
+
+fullEndToEndTests :: TestTree
+fullEndToEndTests = testGroup "FullEndToEndTest"
+  [ testCase "interpret ''" $ runBF "" @?= ""
+  , testCase "interpret '+++.-.[.-]..'" $
+    (shift48 $ runBF "+++.-.[.-]..") @?= "322100"
+  , testCase "interpret 42 '+'s" $ runBF ((take 42 $ repeat '+') ++ ".") @?= "*"
+  , testCase "interpret 'Hello World!'" $
+      runBF hello_world_src @?= "Hello World!\n"
   ]
