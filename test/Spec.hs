@@ -1,9 +1,9 @@
 import Data.Char (chr, ord)
 import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.HUnit (testCase, (@?=))
+import Test.Tasty.HUnit (assertFailure, testCase, (@?=))
 import Text.ParserCombinators.Parsec (parse)
 import HBrainfuck.Internal.AST (BFValue (..))
-import HBrainfuck.Internal.Interpreter (runBF)
+import HBrainfuck.Internal.Interpreter (CalcError (..), runBF)
 import HBrainfuck.Internal.Parser (parseBFProgram, parseBFValue, parseBrackets)
 
 main :: IO ()
@@ -90,10 +90,18 @@ shift48 = map $ chr . (+ 48) . ord
 
 fullEndToEndTests :: TestTree
 fullEndToEndTests = testGroup "FullEndToEndTest"
-  [ testCase "interpret ''" $ runBF "" @?= ""
+  [ testCase "interpret ''" $ runBF "" @?= Right ""
   , testCase "interpret '+++.-.[.-]..'" $
-    (shift48 $ runBF "+++.-.[.-]..") @?= "322100"
-  , testCase "interpret 42 '+'s" $ runBF ((take 42 $ repeat '+') ++ ".") @?= "*"
+    (shift48 <$> runBF "+++.-.[.-]..") @?= Right "322100"
+  , testCase "interpret 42 '+'s" $ runBF ((take 42 $ repeat '+') ++ ".") @?=
+    Right "*"
   , testCase "interpret 'Hello World!'" $
-      runBF hello_world_src @?= "Hello World!\n"
+      runBF hello_world_src @?= Right "Hello World!\n"
+  , testCase "interpret illegal comma expr" $
+      runBF "+++.+,.+" @?= Left IllegalComma
+  , testCase "interpret illegal '['" $
+      case runBF "[" of
+        (Left (Parser _)) -> return ()
+        x -> assertFailure $ "Expected Left (Parser _) error, but got "
+                             ++ show x ++ "."
   ]

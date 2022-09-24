@@ -1,20 +1,24 @@
 {-# LANGUAGE TemplateHaskell #-}
 module HBrainfuck.Internal.Interpreter
-  ( BFState (..)
+  ( IntMap
+  , BFState (..)
+  , CalcError (..)
   , initState
   , runBF
+  , propagateError
   , evalAST
   , evalAST'
   , chainEval
   , stepEval
+  , current
   ) where
 
 import Data.Char (chr)
-import Data.Either (fromRight)
 import qualified Data.Map as M
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad.State.Lazy
 import Lens.Micro.Platform ((+=) , (%=) , makeLenses , use)
-import Text.ParserCombinators.Parsec (parse)
+import Text.ParserCombinators.Parsec (ParseError, parse)
 import HBrainfuck.Internal.AST (BFValue (..))
 import HBrainfuck.Internal.Parser (parseBFProgram)
 
@@ -25,26 +29,39 @@ data BFState = BFState { _pos  :: Int
                        , _tape :: IntMap
                        } deriving (Show)
 
+data CalcError = IllegalComma
+               | Parser ParseError deriving (Eq)
+
+instance Show CalcError where
+  show IllegalComma = "Comma not allowed in non-interactive interpreter."
+  show (Parser e) = show e
+
+
 makeLenses ''BFState
 
 initState :: BFState
 initState = BFState { _pos = 0, _tape = M.empty }
 
-runBF :: String -> String
-runBF src = evalAST $ fromRight [] parsed
+runBF :: String -> Either CalcError String
+runBF src = propagateError (evalAST <$> parsed)
     where parsed = parse parseBFProgram "Brainfuck" src
 
-evalAST :: [BFValue] -> String
+type InterpreterState = ExceptT CalcError (State BFState)
+
+propagateError :: Either ParseError (Either CalcError a) -> Either CalcError a
+propagateError (Left e) = Left . Parser $ e
+propagateError (Right a) = a
+
+evalAST :: [BFValue] -> Either CalcError String
 evalAST = evalAST' initState
 
-evalAST' :: BFState -> [BFValue] -> String
-evalAST' s xs = evalState (chainEval xs) s
+evalAST' :: BFState -> [BFValue] -> Either CalcError String
+evalAST' s xs = evalState (runExceptT (chainEval xs)) s
 
-chainEval :: [BFValue] -> State BFState String
+chainEval :: [BFValue] -> InterpreterState String
 chainEval xs = concat <$> forM xs stepEval
 
-
-stepEval :: BFValue -> State BFState String
+stepEval :: BFValue -> InterpreterState String
 stepEval Gt = do pos += 1
                  return ""
 stepEval Lt = pos += (-1) >> return ""
@@ -67,9 +84,9 @@ stepEval v@(Brackets cs) = do pre <- current
                                       then return out
                                       else do out_post <- stepEval v
                                               return $ out ++ out_post
--- TODO: throwError for case `stepEval Comma`
+stepEval Comma = throwError IllegalComma
 
-current :: State BFState Int
+current :: InterpreterState Int
 current = do p <- use pos
              t <- use tape
              let val = M.findWithDefault 0 p t
