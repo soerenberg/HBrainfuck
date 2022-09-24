@@ -29,15 +29,14 @@ data BFState = BFState { _pos  :: Int
                        , _tape :: IntMap
                        } deriving (Show)
 
+makeLenses ''BFState
+
 data CalcError = IllegalComma
                | Parser ParseError deriving (Eq)
 
 instance Show CalcError where
   show IllegalComma = "Comma not allowed in non-interactive interpreter."
   show (Parser e) = show e
-
-
-makeLenses ''BFState
 
 initState :: BFState
 initState = BFState { _pos = 0, _tape = M.empty }
@@ -62,8 +61,7 @@ chainEval :: [BFValue] -> InterpreterState String
 chainEval xs = concat <$> forM xs stepEval
 
 stepEval :: BFValue -> InterpreterState String
-stepEval Gt = do pos += 1
-                 return ""
+stepEval Gt = pos += 1 >> return ""
 stepEval Lt = pos += (-1) >> return ""
 stepEval Plus = do p <- use pos
                    tape %= M.insertWith (+) p 1
@@ -71,10 +69,7 @@ stepEval Plus = do p <- use pos
 stepEval Minus = do p <- use pos
                     tape %= M.insertWith (+) p (-1)
                     return ""
-stepEval Dot = do p <- use pos
-                  t <- use tape
-                  let x = M.findWithDefault 0 p t
-                  return [chr x]
+stepEval Dot = (return . chr) <$> current
 stepEval v@(Brackets cs) = do pre <- current
                               if pre == 0
                               then return ""
