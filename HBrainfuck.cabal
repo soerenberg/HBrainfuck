@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      HBrainfuck
+      HBrainfuck.Internal.Actions
       HBrainfuck.Internal.AST
       HBrainfuck.Internal.Interpreter
       HBrainfuck.Internal.Parser
