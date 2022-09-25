@@ -30,7 +30,6 @@ library
       HBrainfuck.Internal.AST
       HBrainfuck.Internal.Interpreter
       HBrainfuck.Internal.Parser
-      Lib
   other-modules:
       Paths_HBrainfuck
   hs-source-dirs:
